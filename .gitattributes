@@ -1,0 +1,19 @@
+# Estes arquivos sao consumidos por conteineres Linux e pelo runner do
+# GitHub Actions: precisam de LF, nunca CRLF. Sem isto, o Windows
+# gravaria CRLF e o bash reclamaria de "bad interpreter" no runner.
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.conf      text eol=lf
+*.html      text eol=lf
+*.md        text eol=lf
+Dockerfile  text eol=lf
+.gitignore  text eol=lf
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.pdf binary

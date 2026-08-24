@@ -1,0 +1,146 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+  IMAGEM: ${{ github.repository }}/web
+
+jobs:
+
+  # =========================================================================
+  # CI - ETAPA 1: validacao estatica (rapida, nao sobe nada)
+  # =========================================================================
+  validar:
+    name: Validar configuracao
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v4
+
+      - name: docker-compose.yml e valido?
+        working-directory: loja-docker
+        run: docker compose config -q
+
+      - name: Politica de seguranca - so web e minio podem publicar portas
+        working-directory: loja-docker
+        run: |
+          publicados=$(docker compose config --format json \
+            | jq -r '.services | to_entries[] | select(.value.ports != null) | .key' \
+            | sort | paste -sd, -)
+          echo "Servicos com ports: $publicados"
+          if [ "$publicados" != "minio,web" ]; then
+            echo "::error::A api e/ou o banco ganharam porta publicada. Isso quebra a separacao publico/privado da atividade."
+            exit 1
+          fi
+
+          portas_minio=$(docker compose config --format json \
+            | jq -r '.services.minio.ports[].published' | sort | paste -sd, -)
+          echo "Portas publicadas pelo minio: $portas_minio"
+          if [ "$portas_minio" != "9001" ]; then
+            echo "::error::O MinIO so pode publicar o console (9001). A API S3 (9000) precisa continuar interna."
+            exit 1
+          fi
+
+      - name: Os volumes persistentes estao declarados?
+        working-directory: loja-docker
+        run: |
+          for v in dados-banco dados-objetos; do
+            if ! docker compose config --format json | jq -e ".volumes | has(\"$v\")" >/dev/null; then
+              echo "::error::Volume '$v' nao declarado - a persistencia da Tarefa 6/7 quebraria."
+              exit 1
+            fi
+            echo "volume '$v' declarado"
+          done
+
+      - name: Analise estatica do script de teste
+        run: shellcheck scripts/smoke-test.sh
+
+  # =========================================================================
+  # CI - ETAPA 2: sobe a stack de verdade e testa todas as tarefas
+  # =========================================================================
+  testar:
+    name: Testes de integracao
+    runs-on: ubuntu-latest
+    needs: validar
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v4
+
+      - name: Baixar as imagens
+        working-directory: loja-docker
+        run: docker compose pull --quiet
+
+      - name: Rodar os testes de fumaca (Tarefas 2 a 8)
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh
+
+      - name: Logs dos conteineres (so em caso de falha)
+        if: failure()
+        working-directory: loja-docker
+        run: docker compose logs --tail 100
+
+      - name: Limpar tudo
+        if: always()
+        working-directory: loja-docker
+        run: docker compose down -v --remove-orphans
+
+  # =========================================================================
+  # CD - ETAPA 3: empacota a vitrine numa imagem e publica no GHCR
+  # Roda apenas em push na main, depois que os testes passaram.
+  # =========================================================================
+  publicar:
+    name: Publicar imagem da vitrine
+    runs-on: ubuntu-latest
+    needs: testar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v4
+
+      - name: Autenticar no GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Calcular as tags da imagem
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGEM }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Construir e publicar
+        uses: docker/build-push-action@v6
+        with:
+          context: loja-docker/web
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+      - name: Resumo
+        run: |
+          {
+            echo "### Imagem publicada"
+            echo ""
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudStore — Vitrine</title>
+<style>
+  :root{
+    --bg:#0f172a; --card:#ffffff; --ink:#0f172a; --muted:#64748b;
+    --line:#e2e8f0; --brand:#0d7490; --brand-dark:#075985; --ok:#15803d;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    background:#f1f5f9; color:var(--ink); line-height:1.5;
+  }
+
+  /* ---------- topo ---------- */
+  header{
+    background:linear-gradient(135deg,var(--brand-dark),var(--brand));
+    color:#fff; padding:28px 20px 34px;
+  }
+  .wrap{max-width:1040px;margin:0 auto}
+  .brand{display:flex;align-items:center;gap:12px}
+  .logo{
+    width:44px;height:44px;border-radius:12px;background:rgba(255,255,255,.18);
+    display:grid;place-items:center;font-size:24px
+  }
+  .brand h1{font-size:28px;letter-spacing:-.5px}
+  .brand span{display:block;font-size:13px;opacity:.85;font-weight:400}
+  nav{margin-top:20px;display:flex;flex-wrap:wrap;gap:10px}
+  nav a{
+    color:#fff;text-decoration:none;font-size:14px;padding:7px 14px;
+    border:1px solid rgba(255,255,255,.35);border-radius:999px
+  }
+  nav a:hover{background:rgba(255,255,255,.15)}
+  nav a.destaque{background:#fff;color:var(--brand-dark);font-weight:600;border-color:#fff}
+
+  /* ---------- faixa das camadas ---------- */
+  .camadas{
+    background:#fff;border-bottom:1px solid var(--line);
+    padding:14px 20px;display:flex;flex-wrap:wrap;gap:10px;justify-content:center
+  }
+  .tag{
+    font-size:12.5px;padding:6px 12px;border-radius:999px;border:1px solid var(--line);
+    background:#f8fafc;color:var(--muted)
+  }
+  .tag b{color:var(--ink)}
+  .tag.pub{border-color:#bbf7d0;background:#f0fdf4;color:var(--ok)}
+
+  /* ---------- vitrine ---------- */
+  main{padding:34px 20px 10px}
+  h2{font-size:20px;margin-bottom:4px}
+  .sub{color:var(--muted);font-size:14px;margin-bottom:22px}
+  .grade{
+    display:grid;gap:18px;
+    grid-template-columns:repeat(auto-fill,minmax(215px,1fr))
+  }
+  .produto{
+    background:var(--card);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;display:flex;flex-direction:column;
+    transition:transform .15s ease, box-shadow .15s ease
+  }
+  .produto:hover{transform:translateY(-3px);box-shadow:0 10px 24px rgba(15,23,42,.10)}
+  .foto{height:120px;display:grid;place-items:center;font-size:46px;background:#e0f2fe}
+  .foto.b{background:#fef3c7}.foto.c{background:#ede9fe}
+  .foto.d{background:#dcfce7}.foto.e{background:#ffe4e6}.foto.f{background:#e0e7ff}
+  .info{padding:14px;display:flex;flex-direction:column;gap:6px;flex:1}
+  .info h3{font-size:15.5px}
+  .info p{font-size:13px;color:var(--muted);flex:1}
+  .preco{font-size:19px;font-weight:700;color:var(--brand-dark)}
+  .btn{
+    margin-top:6px;border:0;border-radius:9px;background:var(--brand);color:#fff;
+    padding:9px;font-size:14px;font-weight:600;cursor:pointer
+  }
+  .btn:hover{background:var(--brand-dark)}
+
+  /* ---------- arquitetura ---------- */
+  .arq{
+    margin:36px 0 10px;background:#fff;border:1px solid var(--line);
+    border-radius:14px;padding:22px
+  }
+  .arq h2{margin-bottom:12px}
+  .arq ul{list-style:none;display:grid;gap:10px}
+  .arq li{
+    font-size:14px;padding:11px 14px;border-radius:10px;
+    background:#f8fafc;border-left:4px solid var(--line)
+  }
+  .arq li.pub{border-left-color:var(--ok)}
+  .arq li.priv{border-left-color:#f59e0b}
+  code{
+    font-family:Consolas,"Courier New",monospace;background:#0f172a;color:#e2e8f0;
+    padding:2px 6px;border-radius:5px;font-size:12.5px
+  }
+
+  footer{
+    margin-top:34px;padding:22px 20px;background:var(--bg);color:#94a3b8;
+    font-size:13px;text-align:center
+  }
+  footer b{color:#e2e8f0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="brand">
+      <div class="logo">&#9729;</div>
+      <div>
+        <h1>CloudStore</h1>
+        <span>Sua loja online hospedada em contêineres</span>
+      </div>
+    </div>
+    <nav>
+      <a href="/">Início</a>
+      <a href="/">Ofertas</a>
+      <a href="/">Meu carrinho</a>
+      <a class="destaque" href="/api/">Testar a API interna &rarr; /api/</a>
+    </nav>
+  </div>
+</header>
+
+<div class="camadas">
+  <span class="tag pub"><b>web</b> &middot; nginx &middot; porta 8080 publicada</span>
+  <span class="tag"><b>api</b> &middot; traefik/whoami &middot; sem porta publicada</span>
+  <span class="tag"><b>banco</b> &middot; redis &middot; sem porta publicada</span>
+</div>
+
+<main class="wrap">
+  <h2>Destaques da semana</h2>
+  <p class="sub">Vitrine estática servida pelo Nginx — a única camada exposta ao host.</p>
+
+  <div class="grade">
+    <article class="produto">
+      <div class="foto">&#127911;</div>
+      <div class="info">
+        <h3>Fone Bluetooth Nimbus</h3>
+        <p>Cancelamento de ruído e 30h de bateria.</p>
+        <span class="preco">R$ 289,90</span>
+        <button class="btn">Adicionar ao carrinho</button>
+      </div>
+    </article>
+
+    <article class="produto">
+      <div class="foto b">&#8986;</div>
+      <div class="info">
+        <h3>Smartwatch Stratus</h3>
+        <p>Monitor cardíaco, GPS e resistência à água.</p>
+        <span class="preco">R$ 549,00</span>
+        <button class="btn">Adicionar ao carrinho</button>
+      </div>
+    </article>
+
+    <article class="produto">
+      <div class="foto c">&#128421;</div>
+      <div class="info">
+        <h3>Monitor Cirrus 27 pol.</h3>
+        <p>QHD 144 Hz, painel IPS com borda fina.</p>
+        <span class="preco">R$ 1.399,00</span>
+        <button class="btn">Adicionar ao carrinho</button>
+      </div>
+    </article>
+
+    <article class="produto">
+      <div class="foto d">&#9000;</div>
+      <div class="info">
+        <h3>Teclado Mecânico Altus</h3>
+        <p>Switches silenciosos e retroiluminação RGB.</p>
+        <span class="preco">R$ 329,90</span>
+        <button class="btn">Adicionar ao carrinho</button>
+      </div>
+    </article>
+
+    <article class="produto">
+      <div class="foto e">&#128268;</div>
+      <div class="info">
+        <h3>Carregador Turbo 65W</h3>
+        <p>GaN compacto com três saídas USB-C.</p>
+        <span class="preco">R$ 179,00</span>
+        <button class="btn">Adicionar ao carrinho</button>
+      </div>
+    </article>
+
+    <article class="produto">
+      <div class="foto f">&#128190;</div>
+      <div class="info">
+        <h3>SSD NVMe 1 TB</h3>
+        <p>Leitura de até 7.000 MB/s para o seu setup.</p>
+        <span class="preco">R$ 469,00</span>
+        <button class="btn">Adicionar ao carrinho</button>
+      </div>
+    </article>
+  </div>
+
+  <section class="arq">
+    <h2>Como esta loja está implantada</h2>
+    <ul>
+      <li class="pub">
+        <b>Camada pública</b> — serviço <code>web</code> (Nginx). É o único com
+        <code>ports: "8080:80"</code>. Equivale a uma sub-rede pública com regra de
+        grupo de segurança liberando a porta 80.
+      </li>
+      <li class="priv">
+        <b>Camada privada — API</b> — serviço <code>api</code>
+        (<code>traefik/whoami</code>), sem <code>ports:</code>. Só é alcançada pelo
+        proxy reverso do Nginx na rota <code>/api/</code>.
+      </li>
+      <li class="priv">
+        <b>Camada privada — Banco</b> — serviço <code>banco</code> (Redis), sem
+        <code>ports:</code>. Responde apenas de dentro da rede
+        <code>interna</code> do Docker.
+      </li>
+    </ul>
+  </section>
+</main>
+
+<footer>
+  <b>CloudStore</b> — Computação em Nuvem &middot; Atividade avaliativa:
+  implantação de uma aplicação de três camadas com Docker<br>
+  Nginx (público) &nbsp;&rarr;&nbsp; traefik/whoami (privado) &nbsp;&rarr;&nbsp; Redis (privado)
+</footer>
+
+</body>
+</html>

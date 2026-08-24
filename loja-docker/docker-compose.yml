@@ -1,0 +1,99 @@
+services:
+
+  # ---------------------------------------------------------------
+  # CAMADA 1 - FRONTEND / WEB  ("sub-rede publica")
+  # Porta publicada para o trafego dos clientes da loja.
+  # ---------------------------------------------------------------
+  web:
+    image: nginx:alpine
+    container_name: loja-web
+    ports:
+      - "8080:80"                                       # trafego publico da loja
+    volumes:
+      - ./web/html:/usr/share/nginx/html:ro             # vitrine (index.html)
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro   # proxy reverso
+    depends_on:
+      - api
+    networks:
+      - interna
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+
+  # ---------------------------------------------------------------
+  # CAMADA 2 - API  ("sub-rede privada")
+  # SEM ports: -> inacessivel diretamente pelo host.
+  # ---------------------------------------------------------------
+  api:
+    image: traefik/whoami
+    container_name: loja-api
+    networks:
+      - interna
+
+  # ---------------------------------------------------------------
+  # CAMADA 3 - BANCO DE DADOS  ("sub-rede privada")  [TAREFA 6]
+  # SEM ports: -> inacessivel diretamente pelo host.
+  # O volume dados-banco = ARMAZENAMENTO DE BLOCO: um disco
+  # persistente ligado ao banco, com ciclo de vida proprio.
+  # --appendonly yes faz o Redis gravar cada escrita no disco (AOF).
+  # ---------------------------------------------------------------
+  banco:
+    image: redis:alpine
+    container_name: loja-banco
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - dados-banco:/data
+    networks:
+      - interna
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ---------------------------------------------------------------
+  # CAMADA 4 - ARMAZENAMENTO DE OBJETOS (MinIO)  [TAREFAS 7 e 8]
+  # Compativel com a API do S3. Guarda as imagens dos produtos.
+  #
+  # PORTAS:
+  #   9000 = API S3      -> NAO publicada (fica interna, como api e banco)
+  #   9001 = console web -> publicada SO para administracao
+  # ---------------------------------------------------------------
+  minio:
+    image: minio/minio:latest
+    container_name: loja-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: admin
+      MINIO_ROOT_PASSWORD: admin12345
+    ports:
+      - "9001:9001"                                     # SO o console de administracao
+    volumes:
+      - dados-objetos:/data
+    networks:
+      - interna
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+# -----------------------------------------------------------------
+# Rede interna = equivalente local de uma VPC / sub-rede.
+# Os conteineres se enxergam pelo nome do servico (web, api, banco, minio).
+# -----------------------------------------------------------------
+networks:
+  interna:
+    driver: bridge
+
+# -----------------------------------------------------------------
+# Volumes nomeados = discos persistentes (armazenamento de bloco).
+# Sobrevivem ao "docker compose down". So somem com "down -v".
+# -----------------------------------------------------------------
+volumes:
+  dados-banco:
+  dados-objetos:
