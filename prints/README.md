@@ -117,14 +117,26 @@ Versões separadas do mesmo teste, caso seja preferível montar o print no docum
 - **Comprova:** **CI/CD** — o pipeline roda automaticamente a cada push.
 
 ### `10-github-actions-jobs.png`
-- **O que aparece:** o detalhe da execução, com o encadeamento das etapas
-  `Validar configuracao` → `Testes de integracao` → `Publicar imagem da vitrine`,
-  todas em verde, e o artefato publicado.
-- **Comprova:** **CI/CD** — as etapas de validação, teste de integração e entrega.
+- **O que aparece:** o detalhe da execução, com o encadeamento completo das etapas —
+  `Validar configuracao` → `Testes de integracao` → e daí em paralelo para
+  `Publicar imagem da vitrine` e `Publicar no GitHub Pages`, todas em verde. O job do Pages
+  ainda mostra a URL publicada logo abaixo dele.
+- **Comprova:** **CI/CD** — validação, teste de integração e as duas entregas (imagem + site).
 - **O que o pipeline realmente verifica:** além de subir a stack e rodar as 15 asserções que cobrem
   as Tarefas 2 a 8, a etapa `validar` trata a regra de segurança da arquitetura como *policy as code*:
   o build **falha** se a `api` ou o `banco` ganharem `ports:`, ou se o MinIO publicar qualquer porta
   além da `9001`.
+
+### `11-github-pages-site.png`
+- **O que aparece:** a página do projeto publicada em
+  <https://lucasetculbra.github.io/cloudstore-docker/>, com o selo do pipeline em `passing` e o
+  diagrama separando a sub-rede pública da privada.
+- **Comprova:** **CI/CD** — entrega contínua de fato, com o site publicado automaticamente a
+  cada push na `main`.
+- **Ressalva registrada na própria página:** a vitrine espelhada ali é **estática**. A rota
+  `/api/` **não funciona** no GitHub Pages, porque lá não existe Nginx, contêiner de API nem rede
+  interna — apenas arquivos. O proxy reverso e a camada privada só existem com a stack rodando
+  via `docker compose up -d`.
 
 ---
 

@@ -257,8 +257,9 @@ docker compose ps</code></pre>
   <section>
     <h2>O pipeline de CI/CD</h2>
     <p class="sub">
-      Três etapas encadeadas no GitHub Actions. A mais interessante é a primeira: ela transforma
-      a regra de segurança da arquitetura num teste automático.
+      Quatro etapas encadeadas no GitHub Actions — esta página é publicada pela última delas.
+      A mais interessante é a primeira: ela transforma a regra de segurança da arquitetura
+      num teste automático.
     </p>
     <div class="etapas">
       <div class="etapa">
@@ -283,6 +284,15 @@ docker compose ps</code></pre>
         <p>
           Empacota a vitrine numa imagem e envia para o GitHub Container Registry, com tag
           <code>latest</code> e tag do SHA do commit — o que torna o deploy reversível.
+        </p>
+      </div>
+      <div class="etapa">
+        <span class="n">4</span>
+        <b>paginas</b>
+        <p>
+          Monta e publica esta página no GitHub Pages, junto com a galeria de evidências e o
+          espelho estático da vitrine. Se o Pages ainda não estiver habilitado, avisa e se
+          encerra sem quebrar o pipeline.
         </p>
       </div>
     </div>
