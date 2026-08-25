@@ -2,11 +2,16 @@
 
 [![CI/CD](https://github.com/lucasetculbra/cloudstore-docker/actions/workflows/ci.yml/badge.svg)](https://github.com/lucasetculbra/cloudstore-docker/actions/workflows/ci.yml)
 
+**Página do projeto:** <https://lucasetculbra.github.io/cloudstore-docker/>
+
 Atividade avaliativa de **Computação em Nuvem** — implantação local, com Docker, de uma loja
 online separada em camadas, reproduzindo o par **sub-rede pública / sub-rede privada** da nuvem.
 
 A regra que organiza tudo: **só o que precisa receber tráfego de fora tem porta publicada.**
 Todo o resto vive numa rede Docker interna, alcançável apenas por outros contêineres.
+
+As evidências de execução estão em [`prints/`](prints/), com um
+[índice explicando cada captura](prints/README.md) e o requisito que ela comprova.
 
 ---
 
@@ -56,6 +61,8 @@ Todo o resto vive numa rede Docker interna, alcançável apenas por outros cont�
 .
 ├── .github/workflows/ci.yml     pipeline de CI/CD
 ├── scripts/smoke-test.sh        testes que validam as Tarefas 2 a 8
+├── site/index.html              landing page publicada no GitHub Pages
+├── prints/                      evidências de execução (+ índice em README.md)
 └── loja-docker/
     ├── docker-compose.yml       as 4 camadas + rede + volumes
     └── web/
@@ -171,6 +178,18 @@ vitrine tem um identificador imutável, e voltar atrás é apontar para a tag an
 > `index.html` e dar F5 é mais rápido que reconstruir a imagem — por isso o compose usa
 > bind mounts. Para produção vale o contrário: a imagem carrega o conteúdo, e a versão fica
 > registrada na tag. São os dois lados do mesmo artefato.
+
+### 4. `paginas` — GitHub Pages (só em push na `main`)
+
+Monta e publica <https://lucasetculbra.github.io/cloudstore-docker/> a partir de
+[`site/index.html`](site/index.html), da galeria de [`prints/`](prints/) e de um espelho
+estático da vitrine em `/vitrine/`.
+
+> ⚠️ **A rota `/api/` não funciona no GitHub Pages.** O Pages serve apenas arquivos estáticos —
+> não há Nginx, contêiner de API nem rede interna por trás dele. O proxy reverso e a camada
+> privada só existem quando a stack está rodando com `docker compose up -d`. É exatamente a
+> diferença entre *servir um arquivo* e *operar uma aplicação de várias camadas*, e está dita
+> na própria página.
 
 ---
 

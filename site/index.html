@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CloudStore — aplicação de três camadas com Docker</title>
+<meta name="description" content="Atividade avaliativa de Computação em Nuvem: implantação de uma loja online de três camadas com Docker, isolando API e banco numa rede interna e expondo somente o frontend.">
+<style>
+  :root{
+    --bg:#f1f5f9; --surface:#ffffff; --ink:#0f172a; --muted:#64748b;
+    --line:#e2e8f0; --brand:#0d7490; --brand-dark:#075985;
+    --ok:#15803d; --ok-bg:#f0fdf4; --ok-line:#bbf7d0;
+    --warn:#b45309; --warn-bg:#fffbeb; --warn-line:#fde68a;
+    --code-bg:#0f172a; --code-ink:#e2e8f0;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg:#0b1220; --surface:#111c2e; --ink:#e8eef7; --muted:#94a3b8;
+      --line:#22314a; --brand:#38bdf8; --brand-dark:#0ea5e9;
+      --ok:#4ade80; --ok-bg:#0f2a1b; --ok-line:#166534;
+      --warn:#fbbf24; --warn-bg:#2a1f08; --warn-line:#78350f;
+      --code-bg:#060c17; --code-ink:#dbe6f5;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.6;
+  }
+  .wrap{max-width:980px;margin:0 auto;padding:0 20px}
+
+  header{
+    background:linear-gradient(135deg,var(--brand-dark),var(--brand));
+    color:#fff;padding:44px 0 40px
+  }
+  header .eyebrow{
+    font-size:12.5px;letter-spacing:2px;text-transform:uppercase;opacity:.85
+  }
+  header h1{font-size:clamp(26px,4.4vw,40px);line-height:1.2;margin:8px 0 10px;letter-spacing:-.6px}
+  header p{font-size:16.5px;opacity:.92;max-width:64ch}
+  .badges{margin-top:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+  .badges img{height:20px}
+  .botoes{margin-top:22px;display:flex;flex-wrap:wrap;gap:10px}
+  .btn{
+    display:inline-block;text-decoration:none;font-size:14.5px;font-weight:600;
+    padding:10px 18px;border-radius:10px;border:1px solid rgba(255,255,255,.4);color:#fff
+  }
+  .btn:hover{background:rgba(255,255,255,.14)}
+  .btn.primario{background:#fff;color:var(--brand-dark);border-color:#fff}
+
+  main{padding:44px 0 10px}
+  section{margin-bottom:44px}
+  h2{font-size:22px;letter-spacing:-.3px;margin-bottom:6px}
+  h2 .num{color:var(--brand);font-variant-numeric:tabular-nums}
+  .sub{color:var(--muted);font-size:14.5px;margin-bottom:20px;max-width:72ch}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:22px}
+
+  /* ---- diagrama ---- */
+  .arq{display:grid;gap:14px}
+  .faixa{border:1px solid var(--line);border-radius:12px;padding:14px 16px;background:var(--surface)}
+  .faixa .rot{font-size:12px;letter-spacing:1.4px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+  .faixa.publica{border-color:var(--ok-line);background:var(--ok-bg)}
+  .faixa.publica .rot{color:var(--ok)}
+  .faixa.privada{border-color:var(--warn-line);background:var(--warn-bg)}
+  .faixa.privada .rot{color:var(--warn)}
+  .caixas{display:flex;flex-wrap:wrap;gap:12px}
+  .caixa{
+    flex:1 1 190px;background:var(--surface);border:1px solid var(--line);
+    border-radius:10px;padding:12px 14px
+  }
+  .caixa b{display:block;font-size:15px}
+  .caixa span{display:block;font-size:12.5px;color:var(--muted);margin-top:2px}
+  .caixa .porta{
+    display:inline-block;margin-top:8px;font-size:11.5px;font-weight:600;
+    padding:3px 9px;border-radius:999px;border:1px solid var(--line)
+  }
+  .porta.aberta{color:var(--ok);border-color:var(--ok-line);background:var(--ok-bg)}
+  .porta.fechada{color:var(--muted)}
+  .seta{text-align:center;color:var(--muted);font-size:13px}
+
+  /* ---- tabela ---- */
+  .tabela-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:14.5px;min-width:520px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  th{font-size:12.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted)}
+  tr:last-child td{border-bottom:0}
+
+  code{
+    font-family:Consolas,"SF Mono",Menlo,monospace;background:var(--code-bg);color:var(--code-ink);
+    padding:2px 6px;border-radius:5px;font-size:12.5px
+  }
+  pre{
+    background:var(--code-bg);color:var(--code-ink);border-radius:12px;padding:16px 18px;
+    overflow-x:auto;font-size:13px;line-height:1.55
+  }
+  pre code{background:none;padding:0;font-size:13px}
+
+  /* ---- galeria ---- */
+  .galeria{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+  figure{
+    background:var(--surface);border:1px solid var(--line);border-radius:14px;
+    overflow:hidden;display:flex;flex-direction:column
+  }
+  figure a{display:block;line-height:0;background:var(--bg)}
+  figure img{width:100%;height:auto;display:block}
+  figcaption{padding:14px 16px;font-size:13.5px;color:var(--muted)}
+  figcaption b{display:block;color:var(--ink);font-size:14.5px;margin-bottom:3px}
+  figcaption .prova{
+    display:inline-block;margin-top:8px;font-size:11.5px;padding:3px 9px;border-radius:999px;
+    border:1px solid var(--ok-line);background:var(--ok-bg);color:var(--ok);font-weight:600
+  }
+  .destaque{grid-column:1/-1}
+
+  .aviso{
+    border:1px solid var(--warn-line);background:var(--warn-bg);color:var(--ink);
+    border-radius:12px;padding:16px 18px;font-size:14.5px
+  }
+  .aviso b{color:var(--warn)}
+
+  .etapas{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(240px,1fr))}
+  .etapa{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px}
+  .etapa .n{
+    display:inline-grid;place-items:center;width:24px;height:24px;border-radius:7px;
+    background:var(--brand);color:#fff;font-size:13px;font-weight:700;margin-bottom:8px
+  }
+  .etapa b{display:block;font-size:15px;margin-bottom:4px}
+  .etapa p{font-size:13.5px;color:var(--muted)}
+
+  footer{
+    margin-top:20px;padding:28px 0 34px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:13.5px
+  }
+  footer a{color:var(--brand)}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <div class="eyebrow">Computação em Nuvem · Atividade avaliativa</div>
+    <h1>CloudStore — aplicação de três camadas com Docker</h1>
+    <p>
+      Uma loja online implantada em contêineres, isolando frontend, API e banco de dados.
+      Só o frontend vai para a “rua”: a API e o banco vivem numa rede interna, sem nenhuma
+      porta publicada — o equivalente local de sub-redes pública e privada na nuvem.
+    </p>
+    <div class="badges">
+      <img src="https://github.com/lucasetculbra/cloudstore-docker/actions/workflows/ci.yml/badge.svg" alt="Status do pipeline de CI/CD">
+    </div>
+    <div class="botoes">
+      <a class="btn primario" href="vitrine/">Ver a vitrine</a>
+      <a class="btn" href="https://github.com/lucasetculbra/cloudstore-docker">Repositório no GitHub</a>
+      <a class="btn" href="https://github.com/lucasetculbra/cloudstore-docker/actions">Pipeline CI/CD</a>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <!-- ------------------------------------------------------------------ -->
+  <section>
+    <h2>A arquitetura</h2>
+    <p class="sub">
+      Quatro contêineres numa única rede Docker. A regra que organiza tudo:
+      <b>só publica porta quem precisa receber tráfego de fora.</b>
+    </p>
+
+    <div class="arq">
+      <div class="faixa publica">
+        <div class="rot">Sub-rede pública — acessível pelo host</div>
+        <div class="caixas">
+          <div class="caixa">
+            <b>web</b>
+            <span>nginx:alpine — vitrine + proxy reverso</span>
+            <span class="porta aberta">8080 → 80 publicada</span>
+          </div>
+          <div class="caixa">
+            <b>minio (console)</b>
+            <span>Console de administração do armazenamento de objetos</span>
+            <span class="porta aberta">9001 publicada</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="seta">▼ &nbsp; o nginx encaminha <code>/api/</code> por dentro da rede &nbsp; ▼</div>
+
+      <div class="faixa privada">
+        <div class="rot">Sub-rede privada — sem rota vinda do host</div>
+        <div class="caixas">
+          <div class="caixa">
+            <b>api</b>
+            <span>traefik/whoami — responde quem atendeu</span>
+            <span class="porta fechada">sem <code>ports:</code></span>
+          </div>
+          <div class="caixa">
+            <b>banco</b>
+            <span>redis:alpine + volume <code>dados-banco</code></span>
+            <span class="porta fechada">sem <code>ports:</code></span>
+          </div>
+          <div class="caixa">
+            <b>minio (API S3)</b>
+            <span>Porta 9000 + volume <code>dados-objetos</code></span>
+            <span class="porta fechada">sem <code>ports:</code></span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ -->
+  <section>
+    <h2>Da nuvem para o Docker</h2>
+    <p class="sub">Cada peça desta atividade tem um equivalente direto numa infraestrutura de nuvem.</p>
+    <div class="card tabela-scroll">
+      <table>
+        <thead>
+          <tr><th>Conceito na nuvem</th><th>Equivalente aqui</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>Rede virtual (VPC / sub-rede)</td><td>rede Docker <code>interna</code></td></tr>
+          <tr><td>VM / instância</td><td>contêiner (<code>web</code>, <code>api</code>, <code>banco</code>, <code>minio</code>)</td></tr>
+          <tr><td>Sub-rede pública</td><td>serviço com <code>ports:</code></td></tr>
+          <tr><td>Sub-rede privada</td><td>serviço sem <code>ports:</code></td></tr>
+          <tr><td>Regra de grupo de segurança</td><td>a linha <code>ports:</code> do compose</td></tr>
+          <tr><td>Armazenamento de bloco (EBS)</td><td>volume <code>dados-banco</code> montado em <code>/data</code></td></tr>
+          <tr><td>Armazenamento de objetos (S3)</td><td>MinIO + volume <code>dados-objetos</code></td></tr>
+          <tr><td>Versionamento de bucket</td><td>versionamento habilitado no bucket <code>produtos</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ -->
+  <section>
+    <h2>Como rodar</h2>
+    <p class="sub">Requer Docker com Compose v2. Tudo sobe com um comando.</p>
+<pre><code>git clone https://github.com/lucasetculbra/cloudstore-docker.git
+cd cloudstore-docker/loja-docker
+docker compose up -d
+docker compose ps</code></pre>
+    <div class="card" style="margin-top:14px">
+      <div class="tabela-scroll">
+      <table>
+        <thead><tr><th>Endereço</th><th>O que é</th></tr></thead>
+        <tbody>
+          <tr><td><code>http://localhost:8080</code></td><td>vitrine da loja</td></tr>
+          <tr><td><code>http://localhost:8080/api/</code></td><td>API interna, servida pelo proxy reverso</td></tr>
+          <tr><td><code>http://localhost:9001</code></td><td>console do MinIO (<code>admin</code> / <code>admin12345</code>)</td></tr>
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ -->
+  <section>
+    <h2>O pipeline de CI/CD</h2>
+    <p class="sub">
+      Três etapas encadeadas no GitHub Actions. A mais interessante é a primeira: ela transforma
+      a regra de segurança da arquitetura num teste automático.
+    </p>
+    <div class="etapas">
+      <div class="etapa">
+        <span class="n">1</span>
+        <b>validar</b>
+        <p>
+          Valida o compose e aplica <i>policy as code</i>: o build falha se a <code>api</code> ou o
+          <code>banco</code> ganharem <code>ports:</code>, ou se o MinIO publicar algo além da 9001.
+        </p>
+      </div>
+      <div class="etapa">
+        <span class="n">2</span>
+        <b>testar</b>
+        <p>
+          Sobe a stack inteira no runner e roda 15 asserções que cobrem as Tarefas 2 a 8 —
+          incluindo persistência do volume e o teste de isolamento de falhas.
+        </p>
+      </div>
+      <div class="etapa">
+        <span class="n">3</span>
+        <b>publicar</b>
+        <p>
+          Empacota a vitrine numa imagem e envia para o GitHub Container Registry, com tag
+          <code>latest</code> e tag do SHA do commit — o que torna o deploy reversível.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ -->
+  <section>
+    <h2>Evidências</h2>
+    <p class="sub">
+      Capturas da stack em execução. Clique em qualquer imagem para abrir em tamanho cheio.
+    </p>
+
+    <div class="galeria">
+
+      <figure class="destaque">
+        <a href="prints/05-teste-de-falha-completo.png" target="_blank" rel="noopener">
+          <img src="prints/05-teste-de-falha-completo.png" alt="Vitrine funcionando à esquerda, erro 504 em /api/ à direita e o terminal mostrando a API parada">
+        </a>
+        <figcaption>
+          <b>Isolamento de falhas por camada</b>
+          Com a API derrubada de propósito, a vitrine continua respondendo normalmente e só a
+          rota <code>/api/</code> falha, com <code>504 Gateway Time-out</code>. O terminal
+          confirma que o contêiner <code>loja-api</code> saiu da lista.
+          <span class="prova">Tarefa 5</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/01-vitrine-localhost-8080.png" target="_blank" rel="noopener">
+          <img src="prints/01-vitrine-localhost-8080.png" alt="Vitrine da CloudStore aberta em localhost:8080">
+        </a>
+        <figcaption>
+          <b>Vitrine em localhost:8080</b>
+          O frontend servido pelo Nginx — a única camada exposta ao host.
+          <span class="prova">Tarefa 2</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/02-api-localhost-8080-api.png" target="_blank" rel="noopener">
+          <img src="prints/02-api-localhost-8080-api.png" alt="Resposta do whoami em localhost:8080/api/ mostrando Hostname e RemoteAddr">
+        </a>
+        <figcaption>
+          <b>API interna via proxy reverso</b>
+          O <code>RemoteAddr</code> é o IP do contêiner <code>web</code>, não o do host: prova de
+          que a requisição passou pelo proxy em vez de ir direto à API.
+          <span class="prova">Tarefa 3</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/03-docker-compose-ps.png" target="_blank" rel="noopener">
+          <img src="prints/03-docker-compose-ps.png" alt="Saída do docker compose ps com a coluna PORTS">
+        </a>
+        <figcaption>
+          <b>Quem publica porta</b>
+          Só <code>web</code> e <code>minio</code> têm mapeamento <code>0.0.0.0:…-&gt;…</code>.
+          Em <code>api</code> e <code>banco</code> aparece apenas <code>80/tcp</code> e
+          <code>6379/tcp</code> — que é o <code>EXPOSE</code> interno, não porta no host.
+          <span class="prova">Tarefas 3, 4 e 7</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/04-redis-cli-ping-pong.png" target="_blank" rel="noopener">
+          <img src="prints/04-redis-cli-ping-pong.png" alt="redis-cli ping respondendo PONG dentro do contêiner">
+        </a>
+        <figcaption>
+          <b>Banco responde de dentro da rede</b>
+          <code>PONG</code> executado dentro do contêiner. O segundo comando imprime o
+          <code>hostname</code> do contêiner junto, confirmando onde rodou.
+          <span class="prova">Tarefa 4</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/06-persistencia-volume-tarefa6.png" target="_blank" rel="noopener">
+          <img src="prints/06-persistencia-volume-tarefa6.png" alt="Terminal mostrando o dado sobrevivendo ao docker compose down">
+        </a>
+        <figcaption>
+          <b>Persistência (armazenamento de bloco)</b>
+          O <code>down</code> removeu os quatro contêineres e a rede, mas os volumes
+          sobreviveram — e <code>produto:1</code> continuava valendo <code>"Camiseta"</code>
+          depois do <code>up</code>.
+          <span class="prova">Tarefa 6</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/07-minio-bucket-produtos.png" target="_blank" rel="noopener">
+          <img src="prints/07-minio-bucket-produtos.png" alt="Console do MinIO com o bucket produtos">
+        </a>
+        <figcaption>
+          <b>Armazenamento de objetos</b>
+          Bucket <code>produtos</code> privado, com a imagem do produto. A API S3 (porta 9000)
+          continua interna — só o console é publicado.
+          <span class="prova">Tarefa 7</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/08-minio-versionamento-duas-versoes.png" target="_blank" rel="noopener">
+          <img src="prints/08-minio-versionamento-duas-versoes.png" alt="Duas versões do mesmo objeto no MinIO, com IDs distintos">
+        </a>
+        <figcaption>
+          <b>Versionamento</b>
+          Duas imagens enviadas com o mesmo nome. As duas versões coexistem com
+          <i>Version IDs</i> distintos, e a anterior pode ser restaurada.
+          <span class="prova">Tarefa 8</span>
+        </figcaption>
+      </figure>
+
+      <figure>
+        <a href="prints/10-github-actions-jobs.png" target="_blank" rel="noopener">
+          <img src="prints/10-github-actions-jobs.png" alt="Pipeline de CI/CD verde com as três etapas">
+        </a>
+        <figcaption>
+          <b>Pipeline verde</b>
+          <code>validar</code> → <code>testar</code> → <code>publicar</code>, encadeados e
+          concluídos com sucesso.
+          <span class="prova">CI/CD</span>
+        </figcaption>
+      </figure>
+
+    </div>
+  </section>
+
+  <!-- ------------------------------------------------------------------ -->
+  <section>
+    <h2>Sobre esta página</h2>
+    <div class="aviso">
+      <b>A vitrine aqui é uma cópia estática.</b> O GitHub Pages serve apenas arquivos —
+      não há Nginx, contêiner de API nem Redis por trás dele. Por isso a rota
+      <code>/api/</code> <b>não funciona</b> nesta hospedagem: ela depende do proxy reverso e
+      da rede interna do Docker, que só existem quando a stack está rodando com
+      <code>docker compose up -d</code>. É justamente a diferença entre servir um arquivo e
+      operar uma aplicação de várias camadas.
+    </div>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p>
+    <b>CloudStore</b> — Computação em Nuvem · Atividade avaliativa: implantação de uma aplicação
+    de três camadas com Docker.
+  </p>
+  <p style="margin-top:6px">
+    Código em <a href="https://github.com/lucasetculbra/cloudstore-docker">github.com/lucasetculbra/cloudstore-docker</a>
+    · Publicado automaticamente pelo GitHub Actions.
+  </p>
+</footer>
+
+</body>
+</html>

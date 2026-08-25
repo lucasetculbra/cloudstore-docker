@@ -25,7 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Baixar o codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: docker-compose.yml e valido?
         working-directory: loja-docker
@@ -74,7 +74,7 @@ jobs:
     needs: validar
     steps:
       - name: Baixar o codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Baixar as imagens
         working-directory: loja-docker
@@ -109,7 +109,7 @@ jobs:
       packages: write
     steps:
       - name: Baixar o codigo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Autenticar no GitHub Container Registry
         uses: docker/login-action@v3
@@ -143,4 +143,60 @@ jobs:
             echo '```'
             echo "${{ steps.meta.outputs.tags }}"
             echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # =========================================================================
+  # CD - ETAPA 4: publica a pagina do projeto no GitHub Pages
+  #
+  # O site reune: a landing page do projeto, a galeria de evidencias e um
+  # espelho estatico da vitrine. Atencao: no Pages a rota /api/ NAO funciona,
+  # porque la nao existe nginx, conteiner de API nem rede interna - so
+  # arquivos estaticos. Isso esta explicado na propria pagina.
+  # =========================================================================
+  paginas:
+    name: Publicar no GitHub Pages
+    runs-on: ubuntu-latest
+    needs: testar
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - name: Baixar o codigo
+        uses: actions/checkout@v5
+
+      - name: Habilitar e configurar o Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
+
+      - name: Montar o site
+        run: |
+          mkdir -p _site/vitrine
+          cp -r site/. _site/
+          cp -r prints _site/prints
+          cp -r loja-docker/web/html/. _site/vitrine/
+          touch _site/.nojekyll
+          echo "Conteudo publicado:"
+          find _site -maxdepth 2 -printf '%P\n' | sort
+
+      - name: Enviar o artefato do site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Publicar
+        id: deploy
+        uses: actions/deploy-pages@v4
+
+      - name: Resumo
+        run: |
+          {
+            echo "### Pagina publicada"
+            echo ""
+            echo "${{ steps.deploy.outputs.page_url }}"
           } >> "$GITHUB_STEP_SUMMARY"
