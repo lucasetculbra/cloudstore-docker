@@ -185,6 +185,12 @@ Monta e publica <https://lucasetculbra.github.io/cloudstore-docker/> a partir de
 [`site/index.html`](site/index.html), da galeria de [`prints/`](prints/) e de um espelho
 estático da vitrine em `/vitrine/`.
 
+> **Configuração única, manual:** em **Settings → Pages → Build and deployment**, definir
+> **Source = GitHub Actions**. O `GITHUB_TOKEN` do Actions não tem permissão para *criar* o
+> site do Pages sozinho — a tentativa devolve `Resource not accessible by integration`.
+> Enquanto isso não for feito, o job avisa no resumo da execução e se encerra sem quebrar o
+> pipeline; o push seguinte publica o site automaticamente.
+
 > ⚠️ **A rota `/api/` não funciona no GitHub Pages.** O Pages serve apenas arquivos estáticos —
 > não há Nginx, contêiner de API nem rede interna por trás dele. O proxy reverso e a camada
 > privada só existem quando a stack está rodando com `docker compose up -d`. É exatamente a

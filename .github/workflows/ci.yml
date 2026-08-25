@@ -152,6 +152,12 @@ jobs:
   # espelho estatico da vitrine. Atencao: no Pages a rota /api/ NAO funciona,
   # porque la nao existe nginx, conteiner de API nem rede interna - so
   # arquivos estaticos. Isso esta explicado na propria pagina.
+  #
+  # PRE-REQUISITO (uma vez so, manual): em Settings > Pages, definir
+  # "Build and deployment > Source" como "GitHub Actions". O GITHUB_TOKEN do
+  # Actions NAO tem permissao para criar o site do Pages sozinho - a tentativa
+  # devolve "Resource not accessible by integration". Enquanto isso nao for
+  # feito, este job avisa e se encerra sem quebrar o pipeline.
   # =========================================================================
   paginas:
     name: Publicar no GitHub Pages
@@ -169,12 +175,24 @@ jobs:
       - name: Baixar o codigo
         uses: actions/checkout@v5
 
-      - name: Habilitar e configurar o Pages
+      - name: O Pages ja esta habilitado neste repositorio?
+        id: pages
+        continue-on-error: true
         uses: actions/configure-pages@v5
-        with:
-          enablement: true
+
+      - name: Aviso se o Pages ainda nao foi habilitado
+        if: steps.pages.outcome != 'success'
+        run: |
+          echo "::warning::GitHub Pages ainda nao esta habilitado. Va em Settings > Pages e defina Source = 'GitHub Actions'. O proximo push publica o site automaticamente."
+          {
+            echo "### GitHub Pages ainda nao habilitado"
+            echo ""
+            echo "Abra **Settings > Pages** e defina **Build and deployment > Source** como **GitHub Actions**."
+            echo "O proximo push publica o site sozinho - nenhuma outra mudanca e necessaria."
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Montar o site
+        if: steps.pages.outcome == 'success'
         run: |
           mkdir -p _site/vitrine
           cp -r site/. _site/
@@ -185,15 +203,18 @@ jobs:
           find _site -maxdepth 2 -printf '%P\n' | sort
 
       - name: Enviar o artefato do site
+        if: steps.pages.outcome == 'success'
         uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
       - name: Publicar
         id: deploy
+        if: steps.pages.outcome == 'success'
         uses: actions/deploy-pages@v4
 
       - name: Resumo
+        if: steps.pages.outcome == 'success'
         run: |
           {
             echo "### Pagina publicada"
